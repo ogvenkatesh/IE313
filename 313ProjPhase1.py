@@ -14,6 +14,8 @@ dp_pairs = pd.read_csv("Data/BS_DP_"+size+".csv")
 pl_full = pd.read_csv("Data/BS_PL_"+size+".csv")
 mun_reqs = pd.read_csv("Data/BS_MUN_"+size+".csv")
 
+pl_full['MUN'] = pl_full['MUN'].astype(int)
+
 pl_full.rename(columns={'Unnamed: 0':'pls'}, inplace=True)
 # speed parameters in mph
 walk_speed=3
@@ -33,7 +35,6 @@ large_cost = 20000
 min_spacing = .25
 #maximum distance of station to dp in miles
 dp_proximity = 1
-
 
 
 # creating list of all DP pairs
@@ -61,7 +62,8 @@ violations = (reduced_pls.filter(regex="p\d")<.25).sum(axis=1)
 reduced_pls = reduced_pls.assign(violations = violations)
 current_pl  = reduced_pls.loc[reduced_pls.index[reduced_pls['violations'].idxmax()], 'pls']
 
-#function to create "greedy" paths between each DP pair
+# function takes in DP pair list reduced, pl list, outputs new data frame w/ dp pairs and 2 pls for each forming greedy pathself.
+# loops through each dp pairs
 def greedy_path(dp_pairs_list, pl_full_matrix):
     pl_full_matrix = pl_full_matrix.loc[pl_full_matrix['vals'] != 'none'].reset_index()
     dp_paths = dp_pairs_list[['dp_first','dp_second']].copy()
@@ -80,7 +82,6 @@ def greedy_path(dp_pairs_list, pl_full_matrix):
         dp_paths.loc[index, 'path_time'] = pl_full_matrix.loc[(pl_full_matrix['pls'] == pl_f), dp_f].values/walk_speed + pl_full_matrix.loc[(pl_full_matrix['pls'] == pl_f), pl_s].values/bike_speed + pl_full_matrix.loc[(pl_full_matrix['pls'] == pl_s), dp_s].values/walk_speed
     return(dp_paths)
     #
-
 
 #count = sum(violations)
 count=sum(violations)
@@ -110,9 +111,6 @@ while count > len(reduced_pls):
     count = sum(violations)
 
 
-# function takes in DP pair list reduced, pl list, outputs new data frame w/ dp pairs and 2 pls for each forming greedy pathself.
-# loops through each dp pairs
-
 active_pls=pl_vals.loc[pl_vals['vals'] != 'none'].reset_index()
 
 for index, row in active_pls.iterrows(): # replace pl_vals w/ active only
@@ -136,38 +134,36 @@ for index, row in active_pls.iterrows(): # replace pl_vals w/ active only
         else:
             pl_vals.loc[pl_vals['pls']==current_pl, 'vals'] = 'medium'
 
-
 # change mediums to large and small as necessary for optimal numbers
 # This loop changes mediums to larges until minimum is reached or exceeded
 
-for index, row in mun_reqs.iterrows():
-    cur_min = mun_reqs.iloc[index,mun_reqs.columns.get_loc('MIN_BIKES')]
-    num_bikes = pl_vals.loc[pl_vals['MUN'] == index]['vals'].value_counts()['medium']*medium_size
+for index1, row1 in mun_reqs.iterrows():
+    cur_min = mun_reqs.iloc[index1,mun_reqs.columns.get_loc('MIN_BIKES')]
+    num_bikes = len(pl_vals.loc[(pl_vals['MUN'] == mun_reqs.loc[index1,'MUN']) & (pl_vals['vals'] == 'medium')])*medium_size
     if num_bikes < cur_min:
         # calculate how many to change to large
         deficit = cur_min - num_bikes
-        num_to_change = round(0.5 + deficit/(large_size - medium_size))
-        print(num_to_change)
+        num_to_change = np.ceil(deficit/(large_size - medium_size))
         # change this many from medium to large_cost
-        for index, row in pl_vals.loc[pl_vals['vals'] == 'medium'].iterrows():
+        for index2, row2 in pl_vals.loc[pl_vals['vals'] == 'medium'].iterrows():
             current_pl = 'p'+str(index)
             pl_vals.loc[pl_vals['pls']==current_pl, 'vals'] = 'large'
             num_to_change -= 1
             if num_to_change <= 0:
                 break
 
+
 # Next this loop changes mediums into smalls to be as close to minimum as possible or until all have been changed
-for index, row in mun_reqs.iterrows():
-    cur_min = mun_reqs.iloc[index, mun_reqs.columns.get_loc('MIN_BIKES')]
+for index1, row1 in mun_reqs.iterrows():
+    cur_min = mun_reqs.iloc[index1, mun_reqs.columns.get_loc('MIN_BIKES')]
     # THIS NEXT LINE DOESNT LIKE WHEN I CHANGE 'medium' TO 'large'
-    num_bikes = pl_vals.loc[pl_vals['MUN'] == index,'vals'].value_counts()['medium']*medium_size + pl_vals.loc[pl_vals['MUN'] == index]['vals'].value_counts()['large']*large_size
+    num_bikes = len(pl_vals.loc[(pl_vals['MUN'] == mun_reqs.loc[index1,'MUN']) & (pl_vals['vals'] == 'medium')]) + len(pl_vals.loc[(pl_vals['MUN'] == mun_reqs.loc[index1,'MUN']) & (pl_vals['vals'] == 'large')])*large_size
     if num_bikes > cur_min:
         # calculate how many to change to small_cost
         excess = num_bikes - cur_min
-        num_to_change = int(excess/(medium_size - small_size))
-        print(num_to_change)
+        num_to_change = np.floor(excess/(medium_size - small_size))
         # Change this many from medium to small
-        for index, row in pl_vals.loc[pl_vals['vals'] == 'medium'].iterrows():
+        for index2, row2 in pl_vals.loc[pl_vals['vals'] == 'medium'].iterrows():
             current_pl = 'p'+str(index)
             pl_vals.loc[pl_vals['pls']==current_pl, 'vals'] = 'small'
             num_to_change -= 1
