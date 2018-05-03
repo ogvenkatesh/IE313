@@ -9,6 +9,7 @@ size = 'small'
 # dp_pairs = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_DP_small.csv")
 # pl_full = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_PL_small.csv")
 # mun_reqs = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_MUN_small.csv")
+
 dp_pairs = pd.read_csv("Data/BS_DP_"+size+".csv")
 pl_full = pd.read_csv("Data/BS_PL_"+size+".csv")
 mun_reqs = pd.read_csv("Data/BS_MUN_"+size+".csv")
@@ -60,9 +61,30 @@ reduced_pls=pl_vals.loc[(pl_vals['special']==0) & (pl_vals['vals'] != 'none')].r
 violations = (reduced_pls.filter(regex="p\d")<.25).sum(axis=1)
 reduced_pls=reduced_pls.assign(violations = violations)
 current_pl = reduced_pls.loc[reduced_pls.index[reduced_pls['violations'].idxmax()], 'pls']
+
+def greedy_path(dp_pairs_list, pl_full_matrix):
+    pl_full_matrix = pl_full_matrix.loc[pl_full_matrix['vals'] != 'none'].reset_index()
+    dp_paths = dp_pairs_list[['dp_first','dp_second']]
+    dp_paths=dp_paths.assign(pl_first = np.nan)
+    dp_paths=dp_paths.assign(pl_second = np.nan)
+    dp_paths=dp_paths.assign(path_time = np.nan)
+    for index, row in dp_pairs_list.iterrows():
+        dp_f = row['dp_first']
+        dp_s = row['dp_second']
+        # find minimum distance PL to DP
+        pl_f = pl_full_matrix.loc[pl_full_matrix.index[pl_full_matrix[dp_f].idxmin()], 'pls']
+        pl_s = pl_full_matrix.loc[pl_full_matrix.index[pl_full_matrix[dp_s].idxmin()], 'pls']
+        dp_paths.loc[index, 'pl_first'] = pl_f
+        dp_paths.loc[index, 'pl_second'] = pl_s
+        # Calculate time for each path
+        dp_paths.loc[index, 'path_time'] = pl_full_matrix.loc[(pl_full_matrix['pls'] == pl_f), dp_f].values/walk_speed + pl_full_matrix.loc[(pl_full_matrix['pls'] == pl_f), pl_s].values/bike_speed + pl_full_matrix.loc[(pl_full_matrix['pls'] == pl_s), dp_s].values/walk_speed
+    return(dp_paths)
+    #
+
+
 #count = sum(violations)
-count=19
-while count > 0:
+count=sum(violations)
+while count > len(reduced_pls):
     # Check that we will not violate municipality minimum
     current_mun = pl_vals.loc[pl_vals['pls']==current_pl]['MUN'].iloc[0]
     condition = mun_reqs.loc[mun_reqs['MUN']==current_mun]['MIN_BIKES']-(mun_reqs.loc[mun_reqs['MUN']==current_mun]['num_pls']-1)*large_size
@@ -85,38 +107,16 @@ while count > 0:
     violations = (reduced_pls.filter(regex="p\d")<.25).sum(axis=1)
     reduced_pls=reduced_pls.assign(violations = violations)
     current_pl = reduced_pls.loc[reduced_pls.index[reduced_pls['violations'].idxmax()], 'pls']
-    #count = sum(violations)
-    count = count-1
+    count = sum(violations)
 
-reduced_pls
-pl_vals
 
 # function takes in DP pair list reduced, pl list, outputs new data frame w/ dp pairs and 2 pls for each forming greedy pathself.
 # loops through each dp pairs
 
-def greedy_path(dp_pairs_list, pl_full_matrix):
-    pl_full_matrix = pl_full_matrix.loc[pl_full_matrix['vals'] != 'none'].reset_index()
-    dp_paths = dp_pairs_list[['dp_first','dp_second']]
-    dp_paths=dp_paths.assign(pl_first = np.nan)
-    dp_paths=dp_paths.assign(pl_second = np.nan)
-    dp_paths=dp_paths.assign(path_time = np.nan)
-    for index, row in dp_pairs_list.iterrows():
-        dp_f = row['dp_first']
-        dp_s = row['dp_second']
-        # find minimum distance PL to DP
-        pl_f = pl_full_matrix.loc[pl_full_matrix.index[pl_full_matrix[dp_f].idxmin()], 'pls']
-        pl_s = pl_full_matrix.loc[pl_full_matrix.index[pl_full_matrix[dp_s].idxmin()], 'pls']
-        dp_paths.loc[index, 'pl_first'] = pl_f
-        dp_paths.loc[index, 'pl_second'] = pl_s
-        # Calculate time for each path
-        dp_paths.loc[index, 'path_time'] = pl_full_matrix.loc[(pl_full_matrix['pls'] == pl_f), dp_f].values/walk_speed + pl_full_matrix.loc[(pl_full_matrix['pls'] == pl_f), pl_s].values/bike_speed + pl_full_matrix.loc[(pl_full_matrix['pls'] == pl_s), dp_s].values/walk_speed
-    return(dp_paths)
-    #
+active_pls=pl_vals.loc[pl_vals['vals'] != 'none'].reset_index()
 
-
-
-for index, row in pl_vals.iterrows():
-    current_pl = 'p'+str(index)
+for index, row in active_pls.iterrows(): # replace pl_vals w/ active only
+    current_pl = row['pls']
     # Check that we will not violate municipality minimum
     current_mun = pl_vals.loc[pl_vals['pls']==current_pl]['MUN'].iloc[0]
     condition = mun_reqs.loc[mun_reqs['MUN']==current_mun]['MIN_BIKES']-(mun_reqs.loc[mun_reqs['MUN']==current_mun]['num_pls']-1)*large_size
@@ -139,6 +139,7 @@ for index, row in pl_vals.iterrows():
 
 # change mediums to large and small as necessary for optimal numbers
 # This loop changes mediums to larges until minimum is reached or exceeded
+
 for index, row in mun_reqs.iterrows():
     cur_min = mun_reqs.iloc[index,mun_reqs.columns.get_loc('MIN_BIKES')]
     num_bikes = pl_vals.loc[pl_vals['MUN'] == index]['vals'].value_counts()['medium']*medium_size
@@ -154,11 +155,12 @@ for index, row in mun_reqs.iterrows():
             num_to_change -= 1
             if num_to_change <= 0:
                 break
+
 # Next this loop changes mediums into smalls to be as close to minimum as possible or until all have been changed
 for index, row in mun_reqs.iterrows():
     cur_min = mun_reqs.iloc[index, mun_reqs.columns.get_loc('MIN_BIKES')]
     # THIS NEXT LINE DOESNT LIKE WHEN I CHANGE 'medium' TO 'large'
-    num_bikes = pl_vals.loc[pl_vals['MUN'] == index]['vals'].value_counts()['medium']*medium_size + pl_vals.loc[pl_vals['MUN'] == index]['vals'].value_counts()['large']*large_size
+    num_bikes = pl_vals.loc[pl_vals['MUN'] == index,'vals'].value_counts()['medium']*medium_size + pl_vals.loc[pl_vals['MUN'] == index]['vals'].value_counts()['large']*large_size
     if num_bikes > cur_min:
         # calculate how many to change to small_cost
         excess = num_bikes - cur_min
@@ -171,12 +173,3 @@ for index, row in mun_reqs.iterrows():
             num_to_change -= 1
             if num_to_change <= 0:
                 break
-
-index
-pl_vals.loc[pl_vals['MUN'] == index]
-
-pl_vals.loc[pl_vals['vals'] == 'medium']
-mun_reqs
-greedy_path(dp_list,pl_vals)
-num_bikes
-pl_vals
