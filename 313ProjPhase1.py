@@ -37,37 +37,37 @@ dp_proximity = 1
 
 
 # creating list of all DP pairs
-dp_melt = dp_pairs.drop(['LAT', 'LON'], axis=1)
+dp_melt = dp_pairs.drop(['LAT', 'LON'], axis=1).copy()
 dp_melt = pd.melt(dp_melt,id_vars=['Unnamed: 0'])
 
 # DP pairs that are more than 45 minutes walking
-dp_list = dp_melt.loc[dp_melt['value'] >= max_time*walk_speed]
+dp_list = dp_melt.loc[dp_melt['value'] >= max_time*walk_speed].copy()
 dp_list.rename(columns={'Unnamed: 0':'dp_first'}, inplace=True)
 dp_list.rename(columns={'variable':'dp_second'}, inplace=True)
 
 
 # add medium bike station at every PL
-pl_vals = pl_full
+pl_vals = pl_full.copy()
 # add values e.g. "medium" to end of pl_full
 pl_vals.insert(len(pl_vals.columns), 'vals', 'medium')
 
 
 # mun_counts contains the number of medium bike stations in each mucipality
-mun_counts=pl_vals.groupby('MUN')['vals'].apply(lambda x: (x=='medium').sum()).reset_index(name='num_pls')
-mun_reqs = mun_reqs.merge(mun_counts, left_on='MUN', right_on='MUN', how='inner')
+mun_counts=pl_vals.groupby('MUN')['vals'].apply(lambda x: (x=='medium').sum()).reset_index(name='num_pls').copy()
+mun_reqs = mun_reqs.merge(mun_counts, left_on='MUN', right_on='MUN', how='inner').copy()
 
-
-reduced_pls=pl_vals.loc[(pl_vals['special']==0) & (pl_vals['vals'] != 'none')].reset_index()
+reduced_pls = pl_vals.loc[(pl_vals['special']==0) & (pl_vals['vals'] != 'none')].reset_index().copy()
 violations = (reduced_pls.filter(regex="p\d")<.25).sum(axis=1)
-reduced_pls=reduced_pls.assign(violations = violations)
-current_pl = reduced_pls.loc[reduced_pls.index[reduced_pls['violations'].idxmax()], 'pls']
+reduced_pls = reduced_pls.assign(violations = violations)
+current_pl  = reduced_pls.loc[reduced_pls.index[reduced_pls['violations'].idxmax()], 'pls']
 
+#function to create "greedy" paths between each DP pair
 def greedy_path(dp_pairs_list, pl_full_matrix):
     pl_full_matrix = pl_full_matrix.loc[pl_full_matrix['vals'] != 'none'].reset_index()
-    dp_paths = dp_pairs_list[['dp_first','dp_second']]
-    dp_paths=dp_paths.assign(pl_first = np.nan)
-    dp_paths=dp_paths.assign(pl_second = np.nan)
-    dp_paths=dp_paths.assign(path_time = np.nan)
+    dp_paths = dp_pairs_list[['dp_first','dp_second']].copy()
+    dp_paths = dp_paths.assign(pl_first = np.nan)
+    dp_paths = dp_paths.assign(pl_second = np.nan)
+    dp_paths = dp_paths.assign(path_time = np.nan)
     for index, row in dp_pairs_list.iterrows():
         dp_f = row['dp_first']
         dp_s = row['dp_second']
@@ -103,7 +103,7 @@ while count > len(reduced_pls):
                 mun_reqs.loc[mun_reqs['MUN']==current_mun,'num_pls']=mun_reqs.loc[mun_reqs['MUN']==current_mun,'num_pls']+1
         else:
             pl_vals.loc[pl_vals['pls']==current_pl, 'vals'] = 'medium'
-    reduced_pls=pl_vals.loc[(pl_vals['special']==0) & (pl_vals['vals'] != 'none')].reset_index()
+    reduced_pls=pl_vals.loc[(pl_vals['special']==0) & (pl_vals['vals'] != 'none')].reset_index().copy()
     violations = (reduced_pls.filter(regex="p\d")<.25).sum(axis=1)
     reduced_pls=reduced_pls.assign(violations = violations)
     current_pl = reduced_pls.loc[reduced_pls.index[reduced_pls['violations'].idxmax()], 'pls']
