@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 #loading in data
-size = 'small'
+size = 'medium'
 # dp_pairs = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_DP_small.csv")
 # pl_full = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_PL_small.csv")
 # mun_reqs = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_MUN_small.csv")
@@ -134,6 +134,8 @@ for index, row in active_pls.iterrows(): # replace pl_vals w/ active only
         else:
             pl_vals.loc[pl_vals['pls']==current_pl, 'vals'] = 'medium'
 
+imperfect=pl_vals.copy()
+pl_vals = imperfect.copy()
 # change mediums to large and small as necessary for optimal numbers
 # This loop changes mediums to larges until minimum is reached or exceeded
 
@@ -142,29 +144,29 @@ for index1, row1 in mun_reqs.iterrows():
     num_bikes = len(pl_vals.loc[(pl_vals['MUN'] == mun_reqs.loc[index1,'MUN']) & (pl_vals['vals'] == 'medium')])*medium_size
     if num_bikes < cur_min:
         # calculate how many to change to large
-        deficit = cur_min - num_bikes
+        deficit = float(cur_min - num_bikes)
         num_to_change = np.ceil(deficit/(large_size - medium_size))
         # change this many from medium to large_cost
-        for index2, row2 in pl_vals.loc[pl_vals['vals'] == 'medium'].iterrows():
-            current_pl = 'p'+str(index)
+        pls_to_change = pl_vals.loc[(pl_vals['vals'] == 'medium') & (pl_vals['MUN'] == mun_reqs.loc[index1,'MUN'])]
+        for index2, row2 in pls_to_change.iterrows():
+            current_pl = 'p'+str(index2)
             pl_vals.loc[pl_vals['pls']==current_pl, 'vals'] = 'large'
             num_to_change -= 1
             if num_to_change <= 0:
                 break
 
-
 # Next this loop changes mediums into smalls to be as close to minimum as possible or until all have been changed
 for index1, row1 in mun_reqs.iterrows():
     cur_min = mun_reqs.iloc[index1, mun_reqs.columns.get_loc('MIN_BIKES')]
-    # THIS NEXT LINE DOESNT LIKE WHEN I CHANGE 'medium' TO 'large'
-    num_bikes = len(pl_vals.loc[(pl_vals['MUN'] == mun_reqs.loc[index1,'MUN']) & (pl_vals['vals'] == 'medium')]) + len(pl_vals.loc[(pl_vals['MUN'] == mun_reqs.loc[index1,'MUN']) & (pl_vals['vals'] == 'large')])*large_size
+    num_bikes = len(pl_vals.loc[(pl_vals['MUN'] == mun_reqs.loc[index1,'MUN']) & (pl_vals['vals'] == 'medium')])*medium_size + len(pl_vals.loc[(pl_vals['MUN'] == mun_reqs.loc[index1,'MUN']) & (pl_vals['vals'] == 'large')])*large_size
     if num_bikes > cur_min:
         # calculate how many to change to small_cost
-        excess = num_bikes - cur_min
+        excess = float(num_bikes - cur_min)
         num_to_change = np.floor(excess/(medium_size - small_size))
         # Change this many from medium to small
-        for index2, row2 in pl_vals.loc[pl_vals['vals'] == 'medium'].iterrows():
-            current_pl = 'p'+str(index)
+        pls_to_change = pl_vals.loc[(pl_vals['vals'] == 'medium') & (pl_vals['MUN'] == mun_reqs.loc[index1,'MUN'])]
+        for index2, row2 in pls_to_change.iterrows():
+            current_pl = 'p'+str(index2)
             pl_vals.loc[pl_vals['pls']==current_pl, 'vals'] = 'small'
             num_to_change -= 1
             if num_to_change <= 0:
