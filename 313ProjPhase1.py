@@ -44,6 +44,7 @@ dp_list = dp_melt.loc[dp_melt['value'] >= max_time*walk_speed]
 dp_list.rename(columns={'Unnamed: 0':'dp_first'}, inplace=True)
 dp_list.rename(columns={'variable':'dp_second'}, inplace=True)
 
+
 # add medium bike station at every PL
 pl_vals = pl_full
 # add values e.g. "medium" to end of pl_full
@@ -59,14 +60,17 @@ pl_vals.loc['']
 
 for index, row in pl_vals.iterrows():
     current_pl = 'p'+str(index)
+    # Check that we will not violate municipality minimum
     current_mun = pl_vals.loc[pl_vals['pls']==current_pl]['MUN'].iloc[0]
     condition = mun_reqs.loc[mun_reqs['MUN']==current_mun]['MIN_BIKES']-(mun_reqs.loc[mun_reqs['MUN']==current_mun]['num_pls']-1)*large_size
     if condition.iloc[0] <=0:
+        # Check that we will not violate 1 mile rule
         if pl_vals.loc[pl_vals['vals'] != 'none'].filter(regex="d.*").min(axis=0).max()<=1:
             pl_vals.loc[pl_vals['pls']==current_pl, 'vals'] = 'none'
             dp_paths = greedy_path(dp_list, pl_vals)
             # remember to update mun_reqs
             mun_reqs.loc[mun_reqs['MUN']==current_mun,'num_pls']=mun_reqs.loc[mun_reqs['MUN']==current_mun,'num_pls']-1
+            # Check that we will not violate 45 minute time limit
             if dp_paths['path_time'].max() >.75:
                 #reverting status back to medium
                 pl_vals.loc[pl_vals['pls']==current_pl, 'vals'] = 'medium'
@@ -82,13 +86,22 @@ for index, row in mun_reqs.iterrows():
     num_bikes = pl_vals['vals'].value_counts()['medium']*20
     if num_bikes < cur_min:
         # calculate how many to change to large
+        deficit = cur_min - num_bikes
+        num_to_change = round(0.5 + deficit/(large_size - medium_size))
+        print(num_to_change)
+        # change this many from medium to large_cost
+        while num_to_change < 0:
+             for index, row in pl_vals.loc[pl_vals['vals'] == 'medium'].iterrows():
+                 current_pl = 'p'+str(index)
+                 pl_vals.loc[pl_vals['pls']==current_pl, 'vals'] = 'large'
 
+df.loc[df['column_name'] == some_value]
     if num_bikes > min:
         # calculate how many to change to small_cost
-
+pl_vals.loc[pl_vals['vals'] == 'medium']
 mun_reqs
 greedy_path(dp_list,pl_vals)
-
+num_bikes
 
 # function takes in DP pair list reduced, pl list, outputs new data frame w/ dp pairs and 2 pls for each forming greedy pathself.
 # loops through each dp pairs
