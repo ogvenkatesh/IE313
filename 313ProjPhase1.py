@@ -5,10 +5,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 #loading in data
-size = 'medium'
-# dp_pairs = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_DP_small.csv")
-# pl_full = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_PL_small.csv")
-# mun_reqs = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_MUN_small.csv")
+size = 'small'
+dp_pairs = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_DP_small.csv")
+pl_full = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_PL_small.csv")
+mun_reqs = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_MUN_small.csv")
 
 dp_pairs = pd.read_csv("Data/BS_DP_"+size+".csv")
 pl_full = pd.read_csv("Data/BS_PL_"+size+".csv")
@@ -62,7 +62,7 @@ violations = (reduced_pls.filter(regex="p\d")<.25).sum(axis=1)
 reduced_pls = reduced_pls.assign(violations = violations)
 current_pl  = reduced_pls.loc[reduced_pls.index[reduced_pls['violations'].idxmax()], 'pls']
 
-# function takes in DP pair list reduced, pl list, outputs new data frame w/ dp pairs and 2 pls for each forming greedy pathself.
+# function takes in updated DP PL list, outputs new data frame w/ DP pairs and 2 PLs for each forming greedy pathself.
 # loops through each dp pairs
 def greedy_path(dp_pairs_list, pl_full_matrix):
     pl_full_matrix = pl_full_matrix.loc[pl_full_matrix['vals'] != 'none'].reset_index()
@@ -83,8 +83,33 @@ def greedy_path(dp_pairs_list, pl_full_matrix):
     return(dp_paths)
     #
 
+dp_paths = greedy_path(dp_list, pl_vals)
+
+# function takes in DP pair list reduced, pl list, outputs new data frame w/ dp pairs and 2 pls for each forming greedy pathself.
+# loops through each dp pairs
+
+def speedy_path(dp_paths_input, pl_full_matrix, current_pl_input):
+    pl_full_matrix = pl_full_matrix.loc[pl_full_matrix['vals'] != 'none'].reset_index()
+    dp_paths_reduced = dp_paths_input.loc[(dp_paths_input['pl_first'] == current_pl_input) | (dp_paths_input['pl_first'] == current_pl_input)].copy()
+    dp_paths = dp_paths_input.copy()
+    for index, row in dp_paths_reduced.iterrows():
+        dp_f = row['dp_first']
+        dp_s = row['dp_second']
+        # find minimum distance PL to DP
+        pl_f = pl_full_matrix.loc[pl_full_matrix.index[pl_full_matrix[dp_f].idxmin()], 'pls']
+        pl_s = pl_full_matrix.loc[pl_full_matrix.index[pl_full_matrix[dp_s].idxmin()], 'pls']
+        dp_paths_reduced.loc[index, 'pl_first'] = pl_f
+        dp_paths_reduced.loc[index, 'pl_second'] = pl_s
+        # Calculate time for each path
+        dp_paths_reduced.loc[index, 'path_time'] = pl_full_matrix.loc[(pl_full_matrix['pls'] == pl_f), dp_f].values/walk_speed + pl_full_matrix.loc[(pl_full_matrix['pls'] == pl_f), pl_s].values/bike_speed + pl_full_matrix.loc[(pl_full_matrix['pls'] == pl_s), dp_s].values/walk_speed
+    dp_paths.loc[(dp_paths.dp_first.isin(dp_paths_reduced.dp_first)) & (dp_paths.dp_second.isin(dp_paths_reduced.dp_second))] = dp_paths_reduced.copy()
+    return(dp_paths)
+
+
+
 #count = sum(violations)
 count=sum(violations)
+n_max = 1
 while count > len(reduced_pls):
     # Check that we will not violate municipality minimum
     current_mun = pl_vals.loc[pl_vals['pls']==current_pl]['MUN'].iloc[0]
@@ -93,7 +118,7 @@ while count > len(reduced_pls):
         pl_vals.loc[pl_vals['pls']==current_pl, 'vals'] = 'none'
         # Check that we will not violate 1 mile rule
         if pl_vals.loc[pl_vals['vals'] != 'none'].filter(regex="d\d").min(axis=0).max()<=dp_proximity:
-            dp_paths = greedy_path(dp_list, pl_vals)
+            dp_paths = speedy_path(dp_paths, pl_vals,current_pl)
             # remember to update mun_reqs
             mun_reqs.loc[mun_reqs['MUN']==current_mun,'num_pls']=mun_reqs.loc[mun_reqs['MUN']==current_mun,'num_pls']-1
             # Check that we will not violate 45 minute time limit
@@ -104,12 +129,16 @@ while count > len(reduced_pls):
                 mun_reqs.loc[mun_reqs['MUN']==current_mun,'num_pls']=mun_reqs.loc[mun_reqs['MUN']==current_mun,'num_pls']+1
         else:
             pl_vals.loc[pl_vals['pls']==current_pl, 'vals'] = 'medium'
+    # if current pl's value stayed medium, now use n+1th maximum
+    if pl_vals.loc[pl_vals['pls']==current_pl, 'vals'].iloc[0] == 'medium':
+        n_max += 1
+
+
     reduced_pls=pl_vals.loc[(pl_vals['special']==0) & (pl_vals['vals'] != 'none')].reset_index().copy()
     violations = (reduced_pls.filter(regex="p\d")<.25).sum(axis=1)
     reduced_pls=reduced_pls.assign(violations = violations)
-    current_pl = reduced_pls.loc[reduced_pls.index[reduced_pls['violations'].idxmax()], 'pls']
+    current_pl = reduced_pls.loc[reduced_pls.index[reduced_pls['violations'].nlargest(n_max).tail(1)], 'pls']
     count = sum(violations)
-
 
 active_pls=pl_vals.loc[pl_vals['vals'] != 'none'].reset_index()
 
@@ -171,3 +200,15 @@ for index1, row1 in mun_reqs.iterrows():
             num_to_change -= 1
             if num_to_change <= 0:
                 break
+
+
+    current_pl = reduced_pls.loc[reduced_pls.index[reduced_pls['violations'].idxmax()], 'pls']
+a = reduced_pls['p0']
+b = a.nlargest(3)
+b.tail(1)
+c = a.nlargest(3).tail(1)
+# Feasibility Checker
+# municipality min/max
+# .25 rule
+# 1 mile rule
+# 45 minute rule
