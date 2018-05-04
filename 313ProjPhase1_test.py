@@ -4,7 +4,7 @@ from scipy import stats
 import matplotlib.pyplot as plt
 import seaborn as sns
 import time as t
-temp_1 = t.time()
+
 #loading in data
 size = 'medium'
 # dp_pairs = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_DP_small.csv")
@@ -68,6 +68,7 @@ current_pl  = reduced_pls.loc[reduced_pls.index[reduced_pls['violations'].idxmax
 def greedy_path(dp_pairs_list, pl_full_matrix):
     
     pl_full_matrix = pl_full_matrix.loc[pl_full_matrix['vals'] != 'none'].reset_index()
+    print(pl_full_matrix.shape)
     dp_paths = dp_pairs_list[['dp_first','dp_second']].copy()
     dp_paths = dp_paths.assign(pl_first = np.nan)
     dp_paths = dp_paths.assign(pl_second = np.nan)
@@ -79,9 +80,12 @@ def greedy_path(dp_pairs_list, pl_full_matrix):
         dp_s = row['dp_second']
         
         # find minimum distance PL to DP
+        temp = t.time()
         pl_f = pl_full_matrix.loc[pl_full_matrix.index[pl_full_matrix[dp_f].idxmin()],'pls']
         pl_s = pl_full_matrix.loc[pl_full_matrix.index[pl_full_matrix[dp_s].idxmin()],'pls']
-        
+
+        print(t.time() - temp, 'find min')
+                
         dp_paths.loc[index, 'pl_first'] = pl_f
         dp_paths.loc[index, 'pl_second'] = pl_s
         # Calculate time for each path
@@ -96,7 +100,7 @@ count = sum(violations)
 while count > len(reduced_pls):
     # Check that we will not violate municipality minimum
     current_mun = pl_vals.loc[pl_vals['pls']==current_pl]['MUN'].iloc[0]
-    print(current_pl, 'current_pl')
+    print(current_pl)
     condition = mun_reqs.loc[mun_reqs['MUN']==current_mun]['MIN_BIKES']-(mun_reqs.loc[mun_reqs['MUN']==current_mun]['num_pls']-1)*large_size
     if condition.iloc[0] <=0:
         pl_vals.loc[pl_vals['pls']==current_pl, 'vals'] = 'none'
@@ -119,8 +123,8 @@ while count > len(reduced_pls):
     reduced_pls=reduced_pls.assign(violations = violations)
     current_pl = reduced_pls.loc[reduced_pls.index[reduced_pls['violations'].idxmax()], 'pls']
     count = sum(violations)
-    print(len(reduced_pls), 'len(reduced_pls)')
-    print(count, 'count')
+    print(len(reduced_pls))
+    print(count)
     print()
 
 active_pls=pl_vals.loc[pl_vals['vals'] != 'none'].reset_index()
@@ -183,4 +187,3 @@ for index1, row1 in mun_reqs.iterrows():
             num_to_change -= 1
             if num_to_change <= 0:
                 break
-print(t.time()-temp_1, 'finished')
