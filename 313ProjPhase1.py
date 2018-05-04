@@ -230,8 +230,6 @@ for index1, row1 in mun_reqs.iterrows():
 # 1 mile rule
 # 45 minute rule
 
-pl_vals
-mun_reqs
 def check_sol(pl_vals_input,mun_reqs_input):
     checker = []
     for index1, row1 in mun_reqs.iterrows():
@@ -266,8 +264,10 @@ def check_sol(pl_vals_input,mun_reqs_input):
     return(check_result)
 
 
-
 check_sol(pl_vals,mun_reqs)
+
+pl_vals[['pls','vals']].to_csv("sol_"+size+".txt", sep='\t', index=False)
+
 
 
 # Creating Map - trying out
