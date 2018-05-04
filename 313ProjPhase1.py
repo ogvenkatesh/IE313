@@ -137,7 +137,7 @@ while count > len(reduced_pls):
     reduced_pls=pl_vals.loc[(pl_vals['special']==0) & (pl_vals['vals'] != 'none')].reset_index().copy()
     violations = (reduced_pls.filter(regex="p\d")<.25).sum(axis=1)
     reduced_pls=reduced_pls.assign(violations = violations)
-    current_pl = reduced_pls.loc[reduced_pls.index[reduced_pls['violations'].nlargest(n_max).tail(1)], 'pls']
+    current_pl = reduced_pls.loc[reduced_pls.index[reduced_pls['violations'].nlargest(n_max).tail(1)], 'pls'].iloc[0]
     count = sum(violations)
 
 active_pls=pl_vals.loc[pl_vals['vals'] != 'none'].reset_index()
