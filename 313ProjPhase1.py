@@ -7,9 +7,10 @@ import gmplot
 
 #loading in data
 size = 'tiny'
-# dp_pairs = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_DP_small.csv")
-# pl_full = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_PL_small.csv")
-# mun_reqs = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_MUN_small.csv")
+# dp_pairs = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_DP_"+size+".csv")
+# pl_full = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_PL_"+size+".csv")
+# mun_reqs = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_MUN_"+size+".csv")
+
 pl_full = pd.read_csv("/Users/Rohan/Desktop/map/BS_PL_"+size+".csv")
 dp_pairs = pd.read_csv("/Users/Rohan/Desktop/map/BS_DP_"+size+".csv")
 mun_reqs = pd.read_csv("/Users/Rohan/Desktop/map/BS_MUN_"+size+".csv")
@@ -73,6 +74,7 @@ reduced_pls = reduced_pls.assign(violations = violations)
 # Begin by removing the Pl with the most violations
 current_pl  = reduced_pls.loc[reduced_pls.index[reduced_pls['violations'].idxmax()], 'pls']
 
+
 # function takes in updated DP PL list, outputs new data frame w/ DP pairs and 2 PLs for each forming greedy pathself.
 # loops through each dp pairs
 def greedy_path(dp_pairs_list, pl_full_matrix):
@@ -96,23 +98,27 @@ def greedy_path(dp_pairs_list, pl_full_matrix):
 
 dp_paths = greedy_path(dp_list, pl_vals)
 
+
 # function takes in DP pair list reduced, pl list, outputs new data frame w/ dp pairs and 2 pls for each forming greedy pathself.
 # Different from greedy_path(), speedy_path() only recalculates paths that change because of removed PL
 def speedy_path(dp_paths_input, pl_full_matrix, current_pl_input):
-    pl_full_matrix = pl_full_matrix.loc[pl_full_matrix['vals'] != 'none'].reset_index()
-    dp_paths_reduced = dp_paths_input.loc[(dp_paths_input['pl_first'] == current_pl_input) | (dp_paths_input['pl_first'] == current_pl_input)].copy()
-    dp_paths = dp_paths_input.copy()
-    for index, row in dp_paths_reduced.iterrows():
-        dp_f = row['dp_first']
-        dp_s = row['dp_second']
-        # find minimum distance PL to DP
-        pl_f = pl_full_matrix.loc[pl_full_matrix.index[pl_full_matrix[dp_f].idxmin()], 'pls']
-        pl_s = pl_full_matrix.loc[pl_full_matrix.index[pl_full_matrix[dp_s].idxmin()], 'pls']
-        dp_paths_reduced.loc[index, 'pl_first'] = pl_f
-        dp_paths_reduced.loc[index, 'pl_second'] = pl_s
-        # Calculate time for each path
-        dp_paths_reduced.loc[index, 'path_time'] = pl_full_matrix.loc[(pl_full_matrix['pls'] == pl_f), dp_f].values/walk_speed + pl_full_matrix.loc[(pl_full_matrix['pls'] == pl_f), pl_s].values/bike_speed + pl_full_matrix.loc[(pl_full_matrix['pls'] == pl_s), dp_s].values/walk_speed
-    dp_paths.loc[(dp_paths.dp_first.isin(dp_paths_reduced.dp_first)) & (dp_paths.dp_second.isin(dp_paths_reduced.dp_second))] = dp_paths_reduced.copy()
+    if len(dp_paths_input) != 0:
+        pl_full_matrix = pl_full_matrix.loc[pl_full_matrix['vals'] != 'none'].reset_index()
+        dp_paths_reduced = dp_paths_input.loc[(dp_paths_input['pl_first'] == current_pl_input) | (dp_paths_input['pl_first'] == current_pl_input)].copy()
+        dp_paths = dp_paths_input.copy()
+        for index, row in dp_paths_reduced.iterrows():
+            dp_f = row['dp_first']
+            dp_s = row['dp_second']
+            # find minimum distance PL to DP
+            pl_f = pl_full_matrix.loc[pl_full_matrix.index[pl_full_matrix[dp_f].idxmin()], 'pls']
+            pl_s = pl_full_matrix.loc[pl_full_matrix.index[pl_full_matrix[dp_s].idxmin()], 'pls']
+            dp_paths_reduced.loc[index, 'pl_first'] = pl_f
+            dp_paths_reduced.loc[index, 'pl_second'] = pl_s
+            # Calculate time for each path
+            dp_paths_reduced.loc[index, 'path_time'] = pl_full_matrix.loc[(pl_full_matrix['pls'] == pl_f), dp_f].values/walk_speed + pl_full_matrix.loc[(pl_full_matrix['pls'] == pl_f), pl_s].values/bike_speed + pl_full_matrix.loc[(pl_full_matrix['pls'] == pl_s), dp_s].values/walk_speed
+        dp_paths.loc[(dp_paths.dp_first.isin(dp_paths_reduced.dp_first)) & (dp_paths.dp_second.isin(dp_paths_reduced.dp_second))] = dp_paths_reduced.copy()
+    else:
+        dp_paths = dp_paths_input.copy()
     return(dp_paths)
 
 
@@ -254,7 +260,7 @@ def check_sol(pl_vals_input,mun_reqs_input):
     else:
         checker.append(1)
     final_paths =  greedy_path(dp_list,pl_vals_input)
-    if final_paths['path_time'].max() <= .75:
+    if (final_paths['path_time'].max() <= .75) | (len(final_paths) == 0):
         checker.append(0)
     else:
         checker.append(1)
