@@ -5,13 +5,13 @@ import gmplot
 
 #loading in data
 size = 'small'
-# dp_pairs = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_DP_"+size+".csv")
-# pl_full = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_PL_"+size+".csv")
-# mun_reqs = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_MUN_"+size+".csv")
+dp_pairs = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_DP_"+size+".csv")
+pl_full = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_PL_"+size+".csv")
+mun_reqs = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_MUN_"+size+".csv")
 
-pl_full = pd.read_csv("/Users/Rohan/Desktop/map/BS_PL_"+size+".csv")
-dp_pairs = pd.read_csv("/Users/Rohan/Desktop/map/BS_DP_"+size+".csv")
-mun_reqs = pd.read_csv("/Users/Rohan/Desktop/map/BS_MUN_"+size+".csv")
+# pl_full = pd.read_csv("/Users/Rohan/Desktop/map/BS_PL_"+size+".csv")
+# dp_pairs = pd.read_csv("/Users/Rohan/Desktop/map/BS_DP_"+size+".csv")
+# mun_reqs = pd.read_csv("/Users/Rohan/Desktop/map/BS_MUN_"+size+".csv")
 
 #dp_pairs = pd.read_csv("Data/BS_DP_"+size+".csv")
 #pl_full = pd.read_csv("Data/BS_PL_"+size+".csv")
@@ -188,7 +188,7 @@ for index, row in active_pls.iterrows():
     if pl_vals.loc[pl_vals['pls']==current_pl, 'vals'].iloc[0] == 'none':
         dp_paths = dp_paths_temp.copy()
 
-
+pl_vals
 # Change mediums to large and small as necessary for optimal numbers
 # This loop changes mediums to larges until minimum is reached or exceeded
 for index1, row1 in mun_reqs.iterrows():
@@ -236,7 +236,7 @@ for index1, row1 in mun_reqs.iterrows():
 
 def check_sol(pl_vals_input,mun_reqs_input):
     checker = []
-    for index1, row1 in mun_reqs.iterrows():
+    for index1, row1 in mun_reqs_input.iterrows():
         num_bikes = len(pl_vals_input.loc[(pl_vals_input['MUN'] == mun_reqs_input.loc[index1,'MUN']) & (pl_vals_input['vals'] == 'medium')])*medium_size + len(pl_vals_input.loc[(pl_vals['MUN'] == mun_reqs_input.loc[index1,'MUN']) & (pl_vals_input['vals'] == 'large')])*large_size + len(pl_vals_input.loc[(pl_vals_input['MUN'] == mun_reqs_input.loc[index1,'MUN']) & (pl_vals_input['vals'] == 'small')])*small_size
         cur_min = mun_reqs_input.iloc[index1, mun_reqs_input.columns.get_loc('MIN_BIKES')]
         cur_max = mun_reqs_input.iloc[index1, mun_reqs_input.columns.get_loc('MAX_BIKES')]
@@ -257,7 +257,7 @@ def check_sol(pl_vals_input,mun_reqs_input):
         checker.append(0)
     else:
         checker.append(1)
-    final_paths =  greedy_path(dp_list,pl_vals_input)
+    final_paths =  greedy_path(dp_list,pl_vals)
     if (final_paths['path_time'].max() <= max_time) | (len(final_paths) == 0):
         checker.append(0)
     else:
@@ -267,7 +267,6 @@ def check_sol(pl_vals_input,mun_reqs_input):
     check_result=[checker,total_cost,]
     return(check_result)
 
-
 solution = check_sol(pl_vals,mun_reqs)
 
 total_cost = solution[1]
@@ -276,7 +275,7 @@ total_cost = solution[1]
 pl_vals[['pls','vals']].to_csv("sol_"+size+".txt", sep='\t', index=False)
 
 with open("sol_"+size+".txt", "a") as myfile:
-    myfile.write("#The total cost is " + str(solution[1]))
+    myfile.write("#The total cost is $" + str(solution[1]))
 myfile.close()
 
 
