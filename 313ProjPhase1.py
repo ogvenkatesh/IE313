@@ -1,12 +1,10 @@
 import pandas as pd
 import numpy as np
 from scipy import stats
-import matplotlib.pyplot as plt
-import seaborn as sns
 import gmplot
 
 #loading in data
-size = 'tiny'
+size = 'small'
 # dp_pairs = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_DP_"+size+".csv")
 # pl_full = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_PL_"+size+".csv")
 # mun_reqs = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_MUN_"+size+".csv")
@@ -50,7 +48,7 @@ dp_melt = pd.melt(dp_melt,id_vars=['Unnamed: 0'])
 dp_list = dp_melt.loc[dp_melt['value'] >= max_time*walk_speed].copy()
 dp_list.rename(columns={'Unnamed: 0':'dp_first'}, inplace=True)
 dp_list.rename(columns={'variable':'dp_second'}, inplace=True)
-
+dp_list
 
 # add medium bike station at every PL
 pl_vals = pl_full.copy()
@@ -69,7 +67,7 @@ pls.extend(reduced_pls['pls'].values)
 more_reduced_pls = reduced_pls[pls].copy()
 # violations counts the number of times each PL in reduced_pls violates the .25 mile rule
 # Each PL will be couted as violating with itself because the distance from a PL to itself is 0.0
-violations = (more_reduced_pls.filter(regex="p\d")<.25).sum(axis=1)
+violations = (more_reduced_pls.filter(regex="p\d")<min_spacing).sum(axis=1)
 reduced_pls = reduced_pls.assign(violations = violations)
 # Begin by removing the Pl with the most violations
 current_pl  = reduced_pls.loc[reduced_pls.index[reduced_pls['violations'].idxmax()], 'pls']
@@ -139,7 +137,7 @@ while count > len(reduced_pls):
             # remember to update mun_reqs
             mun_reqs.loc[mun_reqs['MUN']==current_mun,'num_pls']=mun_reqs.loc[mun_reqs['MUN']==current_mun,'num_pls']-1
             # Check that we will not violate 45 minute time limit
-            if dp_paths_temp['path_time'].max() > .75:
+            if dp_paths_temp['path_time'].max() > max_time:
                 #reverting status back to medium
                 pl_vals.loc[pl_vals['pls']==current_pl, 'vals'] = 'medium'
                 #reverting mun reqs
@@ -158,7 +156,7 @@ while count > len(reduced_pls):
     pls.extend(reduced_pls['pls'].values)
     more_reduced_pls = reduced_pls[pls].copy()
 
-    violations = (more_reduced_pls.filter(regex="p\d")<.25).sum(axis=1)
+    violations = (more_reduced_pls.filter(regex="p\d")<min_spacing).sum(axis=1)
     reduced_pls = reduced_pls.assign(violations = violations)
     current_pl = reduced_pls.sort_values('violations', ascending = False, inplace = False).iloc[n_max]['pls']
     count = sum(violations)
@@ -180,7 +178,7 @@ for index, row in active_pls.iterrows():
             # remember to update mun_reqs
             mun_reqs.loc[mun_reqs['MUN']==current_mun,'num_pls']=mun_reqs.loc[mun_reqs['MUN']==current_mun,'num_pls']-1
             # Check that we will not violate 45 minute time limit
-            if dp_paths_temp['path_time'].max() > .75:
+            if dp_paths_temp['path_time'].max() > max_time:
                 #reverting status back to medium
                 pl_vals.loc[pl_vals['pls']==current_pl, 'vals'] = 'medium'
                 #reverting mun reqs
@@ -250,7 +248,7 @@ def check_sol(pl_vals_input,mun_reqs_input):
     pls = ['pls']
     pls.extend(reduced_pls['pls'].values)
     more_reduced_pls = reduced_pls[pls].copy()
-    violations = (more_reduced_pls.filter(regex="p\d")<.25).sum(axis=1)
+    violations = (more_reduced_pls.filter(regex="p\d")<min_spacing).sum(axis=1)
     if sum(violations) == len(reduced_pls):
         checker.append(0)
     else:
@@ -260,21 +258,28 @@ def check_sol(pl_vals_input,mun_reqs_input):
     else:
         checker.append(1)
     final_paths =  greedy_path(dp_list,pl_vals_input)
-    if (final_paths['path_time'].max() <= .75) | (len(final_paths) == 0):
+    if (final_paths['path_time'].max() <= max_time) | (len(final_paths) == 0):
         checker.append(0)
     else:
         checker.append(1)
     # Cost of solution
-    total_cost = len(pl_vals.loc[(pl_vals['MUN'] == mun_reqs.loc[index1,'MUN']) & (pl_vals['vals'] == 'medium')])*medium_cost + len(pl_vals.loc[(pl_vals['MUN'] == mun_reqs.loc[index1,'MUN']) & (pl_vals['vals'] == 'large')])*large_cost + len(pl_vals.loc[(pl_vals['MUN'] == mun_reqs.loc[index1,'MUN']) & (pl_vals['vals'] == 'small')])*small_cost
+    total_cost = len(pl_vals.loc[pl_vals['vals'] == 'medium'])*medium_cost + len(pl_vals.loc[pl_vals['vals'] == 'large'])*large_cost + len(pl_vals.loc[pl_vals['vals'] == 'small'])*small_cost
     check_result=[checker,total_cost,]
     return(check_result)
 
 
-check_sol(pl_vals,mun_reqs)
+solution = check_sol(pl_vals,mun_reqs)
+
+total_cost = solution[1]
+
 
 pl_vals[['pls','vals']].to_csv("sol_"+size+".txt", sep='\t', index=False)
 
-#
+with open("sol_"+size+".txt", "a") as myfile:
+    myfile.write("#The total cost is " + str(solution[1]))
+myfile.close()
+
+
 # Place map centered on Skokie
 gmap = gmplot.GoogleMapPlotter(42.048244, -87.747208, 13)
 
@@ -285,6 +290,5 @@ gmap.scatter(pl_vals.loc[(pl_vals['vals'] == 'medium')]['LAT'], pl_vals.loc[(pl_
 # plotting the large bike stations
 gmap.scatter(pl_vals.loc[(pl_vals['vals'] == 'large')]['LAT'], pl_vals.loc[(pl_vals['vals'] == 'large')]['LON'], 'orange', marker=True)
 
-
-
+# drawing the map
 gmap.draw("my_"+size+"_map.html")
