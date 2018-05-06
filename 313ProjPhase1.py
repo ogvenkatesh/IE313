@@ -3,20 +3,20 @@ import numpy as np
 from scipy import stats
 import matplotlib.pyplot as plt
 import seaborn as sns
+import gmplot
 
 #loading in data
-size = 'medium'
+size = 'tiny'
 # dp_pairs = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_DP_small.csv")
 # pl_full = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_PL_small.csv")
 # mun_reqs = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_MUN_small.csv")
+pl_full = pd.read_csv("/Users/Rohan/Desktop/map/BS_PL_"+size+".csv")
+dp_pairs = pd.read_csv("/Users/Rohan/Desktop/map/BS_DP_"+size+".csv")
+mun_reqs = pd.read_csv("/Users/Rohan/Desktop/map/BS_MUN_"+size+".csv")
 
-# pl_full = pd.read_csv("Users/Rohan/Downloads/BS_PL_small.csv")
-# dp_pairs = pd.read_csv("Users/Rohan/Downloads/BS_DP_small.csv")
-# mun_reqs = pd.read_csv("Users/Rohan/Downloads/BS_MUN_small.csv")
-
-dp_pairs = pd.read_csv("Data/BS_DP_"+size+".csv")
-pl_full = pd.read_csv("Data/BS_PL_"+size+".csv")
-mun_reqs = pd.read_csv("Data/BS_MUN_"+size+".csv")
+#dp_pairs = pd.read_csv("Data/BS_DP_"+size+".csv")
+#pl_full = pd.read_csv("Data/BS_PL_"+size+".csv")
+#mun_reqs = pd.read_csv("Data/BS_MUN_"+size+".csv")
 
 pl_full['MUN'] = pl_full['MUN'].astype(int)
 
@@ -268,23 +268,17 @@ check_sol(pl_vals,mun_reqs)
 
 pl_vals[['pls','vals']].to_csv("sol_"+size+".txt", sep='\t', index=False)
 
+#
+# Place map centered on Skokie
+gmap = gmplot.GoogleMapPlotter(42.048244, -87.747208, 13)
+
+# plotting the small bike stations
+gmap.scatter(pl_vals.loc[(pl_vals['vals'] == 'small')]['LAT'], pl_vals.loc[(pl_vals['vals'] == 'small')]['LON'], 'green', marker=True)
+# plotting the medium bike stations
+gmap.scatter(pl_vals.loc[(pl_vals['vals'] == 'medium')]['LAT'], pl_vals.loc[(pl_vals['vals'] == 'medium')]['LON'], 'darkblue', marker=True)
+# plotting the large bike stations
+gmap.scatter(pl_vals.loc[(pl_vals['vals'] == 'large')]['LAT'], pl_vals.loc[(pl_vals['vals'] == 'large')]['LON'], 'orange', marker=True)
 
 
-# Creating Map - trying out
-import gmplot
-#define the map starting
-gmap = gmplot.GoogleMapPlotter(pl_vals['LAT'], pl_vals['LON'], 13)
 
-#loop through all coordinates and grab lats/lons
-lats = []
-lons = []
-for c in coords:
-    gmap_coord = clean_coord(c)
-    lats.append(gmap_coord[0])
-    lons.append(gmap_coord[1])
-
-#add points to map; so add the PL's and the DP's through this
-gmap.scatter(lats, lons, 'red', size=100, marker=False)
-
-#save to map
-gmap.draw("reddit map.html")
+gmap.draw("my_"+size+"_map.html")
