@@ -4,7 +4,7 @@ from scipy import stats
 import gmplot
 
 #loading in data
-size = 'small'
+size = 'medium'
 dp_pairs = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_DP_"+size+".csv")
 pl_full = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_PL_"+size+".csv")
 mun_reqs = pd.read_csv("C:/Users/sambr/OneDrive/Documents/GitHub/IE313/Data/BS_MUN_"+size+".csv")
@@ -275,7 +275,7 @@ total_cost = solution[1]
 pl_vals[['pls','vals']].to_csv("sol_"+size+".txt", sep='\t', index=False)
 
 with open("sol_"+size+".txt", "a") as myfile:
-    myfile.write("#The total cost is $" + str(solution[1]))
+    myfile.write("#The total cost of this system is $" + str(solution[1]))
 myfile.close()
 
 
